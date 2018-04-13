@@ -1,0 +1,55 @@
+
+.registration,
+.login{
+    display: inline-block;
+    vertical-align: top;
+}
+.container{
+    margin: auto;
+    height: 500px;
+    width: 800px;
+}
+.registration,
+.login{
+    border: 1px solid black;
+    border-radius: 5px;
+    min-height: 255px;
+    width: 294px;
+    background-color: #3b89c2;
+}
+.login{
+    margin-left: 200px;
+}
+input{
+    display: block;
+    width: 80%;
+    padding: 15px;
+    margin: 11px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+}
+input[type=text]:focus {
+    background-color: lightblue;
+}
+.submit{
+    width: 91%;
+    border-radius: 5px;
+    text-shadow: 1px 1px #000000;
+    
+}
+h3{
+    margin: 0px;
+    width: 86%;
+    text-align: center;
+    font-size: 30px;
+    background-color: #47c2ff;
+    height: 32px;
+    padding: 20px;
+    color: white;
+    font-family: sans-serif;
+    border-radius: 5px;
+    text-shadow: 1px 1px #000000;
+}
+p{
+    text-align: center;
+}
