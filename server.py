@@ -11,7 +11,7 @@ EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9.+_-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]+$')
 # connectToMySQL returns an instance of MySQLConnection, which we will store in the variable 'mysql'
 mysql = connectToMySQL('login_registration')
 # now, we may invoke the query_db method
-print("all the users", mysql.query_db("SELECT * FROM users;"))
+# print("all the users", mysql.query_db("SELECT * FROM users;"))
 
 # ROOT ROUTE
 @app.route('/')
@@ -27,11 +27,59 @@ def results():
         namequery = "SELECT first_name FROM users WHERE id = %(id)s"
         data = {'id':id}
         username = mysql.query_db(namequery, data)
-        return render_template('results.html', name = username)
+
+        # query for all messages from all users and when is was said
+        message_query = "SELECT * FROM messages JOIN users on users.id = messages.user_id"
+        messagenger = mysql.query_db(message_query)
+        # print(messagenger)
+        
+        comment_query = "SELECT * FROM comments JOIN users on users.id = comments.user_id"
+        commenter = mysql.query_db(comment_query)
+        print('comments')
+        print(commenter)
+        
+        return render_template('results.html', name = username, messages = messagenger, comments = commenter)
     else:
         flash("You are not logged in.")
         return redirect('/')
-   
+
+#-------------------------------------------------
+#        GET MESSAGES AND COMMENTS
+#------------------------------------------------- 
+@app.route('/message', methods=['POST'])
+def message_post():
+    message = request.form['wallmessage']
+    if len(message) < 1:
+        flash(f'Message box cannot be empty', 'message_box')
+        return redirect('/results')
+
+    print(message)
+    id = session['userid']
+    # QUERY TO GET ALL MESSAGES FROM DB
+    query = "INSERT INTO messages(message, updated_at, created_at, user_id) VALUES(%(message)s, now(), now(), %(id)s)"
+    data = {'message': message, 'id':id}
+    new_message = mysql.query_db(query,data)
+
+    return redirect('/results')
+
+@app.route('/comment', methods=['POST'])
+def comment_post():  
+
+    comment = request.form['user_comment_box']
+    message_id = request.form['message_id']
+    id = session['userid']
+    if len(comment) < 1:
+        flash(f'Comment box cannot be empty', 'message_box')
+        return redirect('/results')
+    
+    query = "INSERT INTO comments(comment, updated_at, created_at, message_id, user_id) VALUES(%(comment)s, now(), now(), %(message_id)s, %(id)s)"
+    data = {'comment': comment, 'message_id': message_id, 'id':id}
+    new_message = mysql.query_db(query,data)
+
+    return redirect('/results')
+#--------------------------------------------------
+#               REGISTRATION
+#--------------------------------------------------
 @app.route('/registration', methods=['POST'])
 def registration():
     
@@ -41,7 +89,7 @@ def registration():
     password = request.form['password']
     confirm_password = request.form['confirm_password']
 
-    #--------------------FIRST NAME VALIDATION--------------------------------------------
+    # FIRST NAME VALIDATION
     # CHECK IF FIRST NAME FIELD IS EMPTY
     if len(first_name) < 1:
         flash(f'First name cannot be empty', 'registration_error')
@@ -54,7 +102,7 @@ def registration():
         return any(i.isdigit() for i in s)
     if num_there(first_name) == True:
         flash(f'First name cannot contain numbers')
-        #---------------------LAST NAME VALIDATION--------------------------------------------
+        #---------------------LAST NAME VALIDATION--------------------
     # CHECK IF LAST NAME FIELD IS EMPTY
     if len(last_name) < 1:
         flash(f'Last name cannot be empty')
@@ -68,7 +116,7 @@ def registration():
         return any(i.isdigit() for i in s)
     if num_there(last_name) == True:
         flash(f'Last name cannot contain numbers')
-    #---------------------EMAIL VALIDATION------------------------------------------------
+    #---------------------EMAIL VALIDATION-----------------------------
     # CHECK IF EMAIL IF VALID
     if len(email) < 1:
         flash("Email cannot be blank!")
@@ -76,14 +124,14 @@ def registration():
     elif not EMAIL_REGEX.match(request.form['email']):
         flash("Invalid Email Address!")
         return redirect('/')
-    # check is email is aleady in the database------------------
+    # check is email is aleady in the database-------------------------
     check = "SELECT email FROM users WHERE email = %(email)s"
     email_stuff =  {'email': email}
     email_check = mysql.query_db(check, email_stuff)
     if email_check:
         flash("Email already exits!")
         return redirect('/')
-    #-----------------------PASSWORD VALIDATION--------------------------------------------
+    #-----------------------PASSWORD VALIDATION-----------------------
     #CHECK IF IS VALID AND MATCHING
     if password != confirm_password:
         flash(f"Passwords do not match")
@@ -111,27 +159,29 @@ def registration():
              'first_name': request.form['first_name'],
              'last_name':  request.form['last_name'],
              'email': request.form['email'],
-             'password': pw_hash
+             'password': password
            }
     mysql.query_db(query, data)
     # query for the id of the user that just registered using email of request.form
     newquery = "SELECT id FROM users WHERE email = %(email)s"
     newdata = {'email':email}
     check = mysql.query_db(newquery, newdata)
-    print(check)
+    print(check)    
     # CHECKING IF THE EMAIL QUERY RETURNS THE NEW USERS ID WHERE ID'S MATCH
     if check:
         session['userid'] = check[0]['id']
         return redirect('/results')
-    
+#--------------------------------------------------
+#                       LOGIN
+#--------------------------------------------------
 @app.route('/login', methods=['POST'])  
 def login():
     session['init'] = 0
     email = request.form['login_email']
     password = request.form['password']
 
-    #---------------------EMAIL VALIDATION------------------------------------------------
-    # check is email is aleady in the database------------------f
+    #---------------------EMAIL VALIDATION---------------------
+    # check is email is aleady in the database
     check = "SELECT id, first_name, email, password FROM users WHERE email = %(email)s AND password = %(password)s"
     email_stuff =  {
         'email': email,
@@ -145,11 +195,13 @@ def login():
     else:
         flash('Failed to log in')
         return redirect('/')
-# LOGS OUT OF THE WALL PAGE AND CLEARS THE SESSION
+#--------------------------------------------------
+#                     LOGOUT
+#--------------------------------------------------
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
 
-if __name__ == "__main__":
+if __name__ == "__main__":  
     app.run(debug=True)
